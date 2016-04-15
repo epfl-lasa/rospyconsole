@@ -1,0 +1,101 @@
+#!/usr/bin/env python
+import cmd
+import sys
+import rospy
+from std_msgs.msg import String
+from time import sleep
+import signal
+
+
+# Handle CTRL+C
+def sigint_handler(signum, frame):
+    print '\nCTRL+C: Quitting'
+    exit(1)
+
+
+class py_ros_console(cmd.Cmd):
+    prompt = '>>> '
+
+    def __init__(self):
+        cmd.Cmd.__init__(self)
+
+        # Retrieve topic names from parameters or defaults
+        pub_name = rospy.get_param('/rospy_console/pubtopic', default='/py_console_talker')
+        sub_name = rospy.get_param('/rospy_console/subtopic', default='/py_console_listener')
+
+        intro = 'Welcome to the python ros console.\n Publishing on: %s \n Subscribing to: %s' % (
+            pub_name, sub_name)
+        print(intro)
+
+        # Init publisher and subscriber
+        rospy.init_node('py_console', anonymous=True)
+        self.pub_string = rospy.Publisher(pub_name, String, queue_size=10)
+        rospy.Subscriber(sub_name, String, self.callback)
+
+    # Callback from the ros Subscriber
+    def callback(self, data):
+        print(data.data)
+
+    # ----- cmd.Cmd commands (interpreter) -----
+    def default(self, line):
+        """Called on an input line when the command prefix is not recognized.
+           In that case we execute the line as Python code.
+        """
+        # Publish the entered command
+        self.pub_string.publish(line)
+        # Wait just a tiny bit to display the response before the next prompt
+        sleep(0.1)
+
+    def do_EOF(self, line):
+        """Handle CTRL-D
+        """
+        print('\nCTRL-D: Quitting')
+        return True
+
+
+if __name__ == '__main__':
+    signal.signal(signal.SIGINT, sigint_handler)
+    py_ros_console().cmdloop()
+
+
+
+# Unused code
+# TODO
+# Be able to load a list of commands for autocompletion
+
+    # def complete(self, *a):
+    # print 'completedefault called'
+    #     text = a[0]
+    # print(a[0])
+    #     commands = ['abc', 'bcd']
+    #     return 'abc'
+    # if text:
+    # return [command for command in ['a','b'] ] if command.startswith(text)]
+    # return 'abc'
+    # else:
+    # return commands
+
+    # def completedefault(self, text, line, begidx, endidx):
+    #     """
+    #    Only gets here onced args have been typed in...
+    #    completion of the 'command' by itself does not call this
+    #    """
+
+    # parse out command (could be a partial command)
+    #     command = line.split(' ', 1)[0]
+
+    # generates a list of commands...
+    # from all methods in this class that start with 'do_'
+    #     commands = [ i[3:] for i in dir(self) if i.startswith('do_') ]
+
+    # auto-complete the command
+    #     command = [ i for i in commands if i.startswith(command) ]
+
+    # can not complete a partial arg if...
+    # the command can not be found/completed
+    #     if len(command) != 1:
+    #         return [text]
+
+    # calls do_{command} method to load self.params
+    #     getattr(self, 'do_' + command[0])(None)
+    #     return self.params.parse(line, do=False)
